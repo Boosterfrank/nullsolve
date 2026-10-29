@@ -599,7 +599,7 @@ var OPENAI = makeOpenAIStyle({
   score: function (id) {
     var m = /^gpt-(\d+(?:\.\d+)?)(?:-(mini|nano|chat-latest))?$/.exec(id);
     if (!m) return /^(gpt|o\d|chatgpt)/.test(id) ? 1 : -1;
-    var tier = { undefined: 8, mini: 6, 'chat-latest': 4, nano: 2 }[m[2]];
+    var tier = m[2] === 'mini' ? 6 : m[2] === 'chat-latest' ? 4 : m[2] === 'nano' ? 2 : 8;
     return parseFloat(m[1]) * 100 + tier;
   },
   extras: function (body, reasoning) {

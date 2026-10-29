@@ -108,6 +108,7 @@ async function send(opts) {
       user.shot = await grabFrame(1280);
       if (user.shot) patchMessage(user);
     }
+    if (state.stopRequested) { var early = new Error('Stopped'); early.name = 'AbortError'; throw early; }
 
     var steps = 0;
     while (true) {
@@ -535,7 +536,11 @@ el.file.addEventListener('change', function () {
 
 el.ta.addEventListener('input', autoGrow);
 el.ta.addEventListener('keydown', function (e) {
-  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) { e.preventDefault(); send(); }
+  if (e.key === 'Enter' && !e.shiftKey && !e.isComposing) {
+    e.preventDefault();
+    /* Enter never cancels a reply in progress; the stop button does that. */
+    if (!state.busy) send();
+  }
   if (e.key === 'Escape') { e.preventDefault(); setMinimized(true); }
 });
 el.ta.addEventListener('paste', function (e) {
