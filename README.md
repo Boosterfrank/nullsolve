@@ -1,79 +1,98 @@
 # Nullsolve
 
-A bookmarklet that drops a floating AI chat panel onto any page — like the Gemini
-side panel in Chrome, but it works on whatever site you are already on, minimises
-to a draggable dot, and can see your screen.
+A bookmarklet that drops a floating AI chat panel onto any page, like the
+Gemini side panel in Chrome, except it works on whatever site you are already
+on, with whichever model you prefer. Bring your own key for **Google Gemini**,
+**Anthropic Claude**, **OpenAI GPT** or **DeepSeek**, or point it at any
+OpenAI-compatible endpoint. It minimises to a draggable dot and can see your
+screen.
+
+**Install page:** <https://boosterfrank.github.io/nullsolve/> (published from
+`main` by the Pages workflow).
 
 ```
-src/nullsolve.js    the app (one IIFE, no dependencies)
-build.js            turns it into a javascript: URL
-dist/               build output — bookmarklet, install page, plain script
-test/               local host page for trying it out
+src/            the app, split into modules that build.js concatenates
+build.js        bundles src/ into one script, minifies it, writes dist/
+dist/           build output: install page, bookmarklets, plain script
+test/           unit tests, a mock provider server, headless-browser tests
+.github/        CI (build + tests) and the GitHub Pages deployment
 ```
 
 ## Install
 
-```bash
-node build.js
-```
+Open the install page and pick a provider. There are two buttons to drag onto
+your bookmarks bar (`Cmd/Ctrl + Shift + B` shows the bar):
 
-Then open `dist/index.html`. It has an **API key** field and a **Model** dropdown
-at the top: fill them in and the page rewrites the drag button in place, baking
-those values into the bookmarklet itself. Leave them blank for a plain build you
-configure from inside the panel.
+- **Nullsolve** carries the whole app inside the bookmark (about 83 KB). It
+  works on the most sites, because it needs no network access to start.
+- **Nullsolve (auto-updating)** is a 400-byte loader that fetches the newest
+  `nullsolve.js` from the install page's host each time you click it, so
+  updates arrive without re-installing. Sites that block external scripts need
+  the full version.
 
-Drag the **Nullsolve** button onto your bookmarks bar (`Cmd/Ctrl + Shift + B`
-shows the bar). Or copy the raw URL from the textarea lower down the page — it
-tracks the same fields.
-
-**Load from my key** next to the dropdown calls the Gemini API with whatever key
-you typed and replaces the built-in list with the models that key can actually
-use, tagging the newest plain Flash model `(recommended)`. Always prefer this
-over the built-in list, which is a snapshot and goes stale as Google ships new
-models.
-
-The default is `gemini-flash-latest`, an alias Google repoints at the current
-best Flash model, so it cannot go stale the way a pinned id can.
+The **API key** and **Model** fields are optional. Fill them in and the page
+rewrites both buttons in place, baking the provider, key and model into the
+bookmark itself, so the panel is ready on every site instead of asking per
+domain. **Load from my key** replaces the built-in model list with the models
+your key can actually use and tags the recommended one. The page holds your key
+in memory only; the one request it can make is that model lookup, straight to
+the provider. A baked key lives in the bookmark's URL, so anyone who can read
+your bookmarks can read the key.
 
 Click the bookmark on any normal website to open the panel. Click it again to
 minimise, and again to restore.
 
-The page holds your key in memory only — it is not stored, and the sole request
-it makes is the optional model lookup, straight to Google. Note that a baked key
-lives in the bookmark's URL, so anyone who can read your bookmarks can read the
-key.
-
 ## First run
 
 1. Click the gear icon.
-2. Provider is **Google Gemini** (the others are listed but disabled for now).
-3. Paste a key from [aistudio.google.com/apikey](https://aistudio.google.com/apikey).
-4. **Save**. The model list refreshes from your key automatically, and the newest
-   plain Flash model gets tagged `(recommended)` and becomes the default.
+2. Choose a **Provider**.
+3. Paste a key (the link under the field goes to that provider's key page).
+4. **Save**. The model list refreshes from your key and the recommended model
+   becomes the default. Keys are kept per provider, so you can switch between
+   them freely.
+
+| Provider | Default model | Notes |
+|---|---|---|
+| Google Gemini | `gemini-flash-latest`, or the newest plain Flash from your key | The alias is repointed by Google at the current Flash model, so it cannot go stale. |
+| Anthropic Claude | `claude-opus-5-5` | Called with the browser-access header Anthropic requires for client-side use. Thinking stays on the model's adaptive default; thinking blocks are echoed back verbatim so tool use keeps working. Requests also opt into Anthropic's server-side fallback (`fallbacks: "default"`, beta), which reroutes a safety refusal to another model instead of returning an empty turn; a model that does not take it is used without it. |
+| OpenAI GPT | newest mainline `gpt-N.N` from your key (`gpt-5.5` built in) | Chat Completions with `max_completion_tokens`; mini and nano tiers are listed too. |
+| DeepSeek | `deepseek-v4-flash` | DeepSeek models cannot see images, so screenshots and attachments are left out. Its `reasoning_content` is echoed back, which its thinking mode requires around tool calls. DeepSeek does not document browser (CORS) access; it has worked in testing, but if it is blocked, route it through the custom option and a proxy. |
+| OpenAI-compatible (custom URL) | whatever you type | Any base URL with `/chat/completions` and `/models` under it: OpenRouter, Groq, xAI, a local Ollama or LM Studio server. The key is optional. Requests are kept minimal for compatibility. |
+
+Requests go from your browser straight to the provider. Nothing is proxied,
+and the install page has no backend.
 
 ## What it does
 
-- **Chat** with streaming responses, markdown and tables. Every fenced code
-  block gets its own header bar with a copy button, and whole replies have one too.
-- **A screenshot with every message.** Send your first message and the browser
-  shows its screen-picker once — choose a tab, a window, or the whole screen.
-  From then on every message you send silently carries a fresh JPEG frame
-  (downscaled to 1280px wide), with no prompt and no toggling. Stop from the
-  chip's ×, the composer's screen icon, or your browser's own "Stop sharing"
-  bar; stopping also suppresses the re-prompt, so it stays off until you turn it
-  back on. Switch it off entirely under **Settings → Behaviour → Screenshots**.
-
-  The one-time picker is a hard browser rule: a web page cannot read the screen
-  without an explicit grant, and no bookmarklet can skip it. What it *can* do is
-  ask once and then reuse the stream, which is what this does.
-- **Images** — the `+` button attaches files, and you can paste screenshots
-  straight into the composer.
-- **Minimise to a dot** — a 54px black circle with the white `0` mark. Drag it
-  anywhere; click it to reopen. The panel itself drags by its header and resizes
-  from its top-left corner.
-- **Themes** — Default (follows your system), Light, Dark.
+- **Chat** with streaming replies, markdown and tables. Every fenced code block
+  has a copy button, and so does each reply. Replies show which model answered
+  and how long it took.
+- **A screenshot with every message.** Send your first message and the
+  browser shows its screen picker once; choose a tab, a window, or the whole
+  screen. From then on every message silently carries a fresh JPEG frame
+  (downscaled to 1280px wide). The panel hides itself for the instant the frame
+  is grabbed, so the model sees the page, not its own chat (switch that off
+  under **Settings → Screenshots** if you prefer). Stop from the chip's ×, the
+  composer's screen icon, or your browser's own "Stop sharing" bar; stopping
+  also suppresses the re-prompt until you turn it back on.
+- **Images**: the `+` button attaches files, you can paste screenshots into the
+  composer, or drop image files onto the panel.
+- **Speed**: **Fast** asks the model for minimal reasoning so replies start
+  sooner, **Deep** asks for the most, **Default** leaves the model alone. Each
+  provider gets its own dialect (Gemini `thinkingLevel`, Claude `effort`, OpenAI
+  `reasoning_effort`, DeepSeek `thinking`). A model that rejects the setting is
+  retried once without it and remembered for the session, so a wrong guess
+  costs one round trip, never a dead end.
+- **Thinking**: when a model streams its reasoning (DeepSeek, or Claude with
+  summaries on), it shows in a collapsible block above the answer.
+- **Retry**: a failed turn shows the provider's message and a Retry button.
+  Network failures say so, including the usual cause on strict sites.
+- **Minimise to a dot**: a 54px black circle with the white `0` mark. Drag it
+  anywhere; click it to reopen. The panel itself drags by its header and
+  resizes from its top-left corner. `Esc` in the composer minimises.
+- **Themes**: Default (follows your system), Light, Dark.
 - **System prompt** is editable in settings.
-- **Page control** — see below.
+- **Page control**: see below.
 
 ## Page control
 
@@ -85,116 +104,125 @@ Off by default. Under **Settings → Behaviour → Page control**:
 | **Ask first** | Every action that changes the page shows an inline Allow / Skip card. |
 | **Auto** | Low-risk actions run unattended; risky ones still ask. |
 
-The model gets six tools: `list_elements`, `read_text`, `click`, `fill`,
-`select_option`, and `scroll`. This has been run end to end against the live
-Gemini API, including parallel tool calls. Elements are handed over as refs with their
+The model gets six tools: `list_elements`, `read_text`, `click`, `fill`
+(optionally pressing Enter afterwards), `select_option` and `scroll`. They are
+declared once as JSON Schema and translated into each provider's tool format,
+including parallel calls. Elements are handed over as refs with their
 accessible labels, and every call is logged as a row in the chat with a green,
 red, or pulsing dot, so you can see exactly what it did.
 
 ### What "risky" means
 
-Even in Auto, a confirmation is forced for anything that submits a form, or whose
-label matches delete / send / buy / pay / checkout / confirm / publish / transfer
-/ sign out and similar, or any link that leaves the current origin.
+Even in Auto, a confirmation is forced for anything that submits a form
+(including `fill` with Enter), or whose label matches delete / send / buy / pay
+/ checkout / confirm / publish / transfer / sign out and similar, or any link
+that leaves the current origin.
 
-`fill` **refuses outright** — in every mode, with no prompt to click through — on
-password inputs and on any field whose name, id, autocomplete, or placeholder
-looks like a credential or payment detail (card, cvv, iban, ssn, otp, api key,
-seed phrase). Those you type yourself.
+`fill` **refuses outright**, in every mode, on password inputs and on any
+field whose name, id, autocomplete, or placeholder looks like a credential or
+payment detail (card, cvv, iban, ssn, otp, api key, seed phrase). Those you
+type yourself.
 
 ### The real caveat
 
 Page content is untrusted. The system prompt tells the model that anything it
 reads from the page is data and never instructions, and the confirmation gate
-stands between it and anything destructive — but a hostile page will still try to
-talk it into things, and prompt injection is not a solved problem. Leave this off
-on sites you do not trust, and prefer **Ask first** over **Auto** anywhere that
-matters. The panel never targets its own UI, so it cannot click its own buttons.
+stands between it and anything destructive, but a hostile page will still try
+to talk it into things, and prompt injection is not a solved problem. Leave
+this off on sites you do not trust, and prefer **Ask first** over **Auto**
+anywhere that matters. The panel never targets its own UI.
 
-Tool results are sent back as `role: "user"` turns carrying `functionResponse`
-parts, sanitised to plain JSON first, and the history window never starts
-mid-exchange.
+Tool exchanges are provider-specific (Gemini's thought signatures, Claude's
+tool-use ids and thinking blocks, OpenAI's call ids), so they are replayed only
+to the provider that produced them; switching providers mid-conversation keeps
+the text and drops the tool turns. The loop stops after 10 tool steps, the
+composer's stop button cancels a pending confirmation as well as the request,
+and if a tool turn fails the exact request payload is logged to the browser
+console with a `[nullsolve]` prefix.
 
-Thinking models attach an opaque `thoughtSignature` to each `functionCall` part,
-plus a call `id`. Both are captured as the call streams in — including when the
-signature arrives on a later chunk than the call itself — and echoed back
-verbatim on the replayed part, with the `id` mirrored onto the matching
-`functionResponse` so parallel calls pair up correctly. Without the signature the
-API rejects the next turn outright
-([docs](https://ai.google.dev/gemini-api/docs/thought-signatures)).
-
-On parallel calls the API only signs the *first* part; replaying the rest
-unsigned is what it expects, and is accepted. Signatures on
-plain text parts are not preserved, because SSE splits text across many delta
-parts and there is no honest way to reassemble which signature belonged to what;
-only function calls hard-fail without one. Signatures are per-session and are not
-written to `localStorage`, so a reloaded conversation carries none. If a tool turn ever fails, the exact request payload is logged to
-the browser console with a `[nullsolve]` prefix, and the error in the panel tells
-you to switch Page control off to keep chatting.
-
-Navigation ends the session: the panel is injected per page load, so a click that
-loads a new URL destroys it along with the conversation. The loop also stops
-after 10 tool steps, and the composer's stop button cancels a pending
-confirmation as well as the request.
+Navigation ends the session: the panel is injected per page load, so a click
+that loads a new URL destroys it along with the conversation.
 
 ## Settings and storage
 
-Settings and the last 40 messages live in `localStorage`, which is **per origin**.
-Your key carries across pages on `github.com` but not from `github.com` to
-`google.com`. Two ways around that:
+Settings and the last 40 text turns live in `localStorage`, which is **per
+origin**. Your key carries across pages on `github.com` but not from
+`github.com` to `google.com`. Settings from the Gemini-only release are
+migrated automatically. Two ways around the per-origin limit:
 
-Baking a key in from `dist/index.html` (above) is the easy fix. The same thing
+Baking a key in from the install page (above) is the easy fix. The same thing
 from the command line, for scripted builds:
 
 ```bash
-node build.js --key=YOUR_KEY --model=gemini-2.5-flash
+node build.js --provider=anthropic --key=YOUR_KEY --model=claude-opus-5-5
 ```
 
-This writes the baked values into `dist/nullsolve.bookmarklet.txt` and prefills
-the install page's fields. Or
+This writes the baked values into both bookmarklets and prefills the install
+page's fields. `--provider` is one of `gemini`, `anthropic`, `openai`,
+`deepseek`, `custom` (with `--base=https://...` for the endpoint). Or
 
 ```bash
-node build.js --host=https://your-host.example/nullsolve.js
+node build.js --host=https://your-host.example/nullsolve
 ```
 
-also writes `dist/nullsolve.loader.txt`, a ~200 byte bookmarklet that pulls
-`dist/nullsolve.js` from that URL each time — useful if you want to update the
-script without re-installing the bookmark.
+also writes `dist/nullsolve.loader.txt`, the auto-updating bookmarklet, pulling
+`nullsolve.js` from that host. The Pages workflow passes the site's own URL.
 
-A key you save inside the panel on a given site takes precedence over a baked-in
-one, so if you bake a new key and an old one is still saved for that origin, hit
-**Reset** in settings to clear it.
-
-Requests go from your browser straight to Google. Nothing is proxied.
+A key you save inside the panel on a given site takes precedence over a
+baked-in one, so if you bake a new key and an old one is still saved for that
+origin, hit **Reset** in settings to clear it.
 
 ## Limits
 
 - **Strict CSP sites block bookmarklets.** On pages with a restrictive
   `Content-Security-Policy` (many banks, GitHub, some Google properties) the
-  browser refuses to run `javascript:` URLs at all. The panel styles itself with
-  a constructed stylesheet rather than an inline `<style>` where possible, which
-  helps on moderately strict pages, but nothing works when script execution
-  itself is refused. Paste `dist/nullsolve.js` into devtools, or wrap it in a
-  userscript, on those sites.
-- Page control drives the DOM directly. It cannot see cross-origin iframes, and
-  it cannot survive navigation.
-- Screen capture needs a secure context (`https:` or `localhost`).
-- The capture grant is per page load. Reloading the page, or navigating to
-  another one, means the next message asks for the screen again.
-- If the stream delivers no frame within 1.5s the message is sent without a
-  screenshot rather than blocking.
+  browser refuses to run `javascript:` URLs at all. The panel styles itself
+  with a constructed stylesheet rather than an inline `<style>` where possible,
+  which helps on moderately strict pages, but nothing works when script
+  execution itself is refused. Paste `dist/nullsolve.js` into devtools, or wrap
+  it in a userscript, on those sites. A site whose CSP restricts `connect-src`
+  lets the panel open but blocks its requests; the error message says so.
+- Page control drives the DOM directly. It cannot see cross-origin iframes,
+  and it cannot survive navigation.
+- Screen capture needs a secure context (`https:` or `localhost`), and the
+  grant is per page load.
+- If the capture delivers no frame within 1.5s the message is sent without a
+  screenshot rather than blocking; hiding the panel for the grab waits at most
+  450ms.
 
 ## Development
 
 ```bash
-node build.js && python3 -m http.server 8731
+npm install          # terser (minifier) and playwright, both dev-only
+node build.js        # writes dist/
+npm run serve        # mock providers + static server on http://127.0.0.1:8731/test/
 ```
 
-then open `http://localhost:8731/test/`. The test page injects `dist/nullsolve.js`
-directly, so a rebuild plus a reload is the whole loop. `window.__nullsolve` is
-not exposed, but the host element carries the handle:
+The test page injects `dist/nullsolve.js` directly, so a rebuild plus a reload
+is the whole loop. Add `?noinject` to load it without the panel, for example
+to paste a bookmarklet into the console. The host element carries a handle:
 
 ```js
 document.getElementById('nullsolve-host-v1').__nullsolve
-// { toggle, open, render, destroy, state }
+// { version, toggle, open, render, destroy, state, settings }
 ```
+
+`test/mock-server.js` speaks all four providers' wire formats (SSE framing,
+tool calls, model listings) with scripted replies; the panel is pointed at it
+with `window.__NULLSOLVE_CONFIG__ = { endpoints: { gemini: 'http://127.0.0.1:8731/mock/gemini', ... } }`.
+
+```bash
+npm test             # unit tests: adapters, SSE reader, markdown, settings migration
+npm run test:e2e     # headless Chromium against the mock server; builds into test/.out
+```
+
+Without `npm install`, `node build.js` still works: it skips minification and
+ships the readable bundle (about 125 KB instead of 82 KB).
+
+## Deploying
+
+`.github/workflows/pages.yml` builds `dist/` and publishes it to GitHub Pages
+on every push to `main` (and on demand from the Actions tab). It needs
+**Settings → Pages → Source** set to **GitHub Actions**; the loader bookmarklet
+on the published page then points at the site's own `nullsolve.js`.
+`.github/workflows/ci.yml` runs the unit and end-to-end tests on every push.

@@ -1,0 +1,24 @@
+{
+  "name": "nullsolve",
+  "version": "2.0.0",
+  "private": true,
+  "description": "A bookmarklet that drops a floating AI chat panel onto any page, with your own Gemini, Claude, GPT or DeepSeek key.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Boosterfrank/nullsolve.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "node build.js",
+    "test": "node --test test/unit.test.js",
+    "test:e2e": "node test/e2e.js",
+    "serve": "node test/mock-server.js"
+  },
+  "devDependencies": {
+    "playwright": "1.63.0",
+    "terser": "^5.51.2"
+  }
+}
