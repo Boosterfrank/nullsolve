@@ -4,7 +4,9 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [main]
+    # The second branch is temporary, so the first deployment can happen
+    # before this lands on main; remove it after merging.
+    branches: [main, claude/wonderful-bohr-xfgxp1]
   workflow_dispatch:
 
 permissions:
