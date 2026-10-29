@@ -1,0 +1,39 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Nullsolve test host page</title>
+<style>
+  body { font: 16px/1.6 system-ui, sans-serif; margin: 0; padding: 40px;
+         background: linear-gradient(160deg,#dfe7f5,#f7f3ec); min-height: 100vh; color:#222; }
+  h1 { font-size: 30px; margin-top: 0; }
+  form { max-width: 420px; display: grid; gap: 12px; background:#fff; padding:20px;
+         border-radius:12px; border:1px solid #ddd; }
+  label { font-size: 13px; font-weight: 600; display:block; margin-bottom:4px; }
+  input, select { width:100%; padding:8px 10px; border:1px solid #bbb; border-radius:7px; font:inherit; }
+  button { font: inherit; padding: 9px 15px; border-radius: 8px; border: 1px solid #999;
+           background: #fff; cursor: pointer; }
+  #out { margin-top:16px; font-family: ui-monospace, Menlo, monospace; font-size:13px; color:#444; }
+</style>
+<h1>Host page</h1>
+<p>A stand-in for a real site, with fields for the page-control tools to drive.</p>
+
+<form onsubmit="report('SUBMITTED'); return false;">
+  <div><label for="q">Search</label><input id="q" name="q" placeholder="Search the catalogue"></div>
+  <div><label for="pw">Password</label><input id="pw" name="password" type="password" placeholder="Your password"></div>
+  <div><label for="cty">Country</label>
+    <select id="cty" name="country"><option value="">Pick one</option><option value="uk">United Kingdom</option><option value="pt">Portugal</option></select>
+  </div>
+  <div style="display:flex;gap:8px">
+    <button type="button" id="apply" onclick="report('APPLIED ' + document.getElementById('q').value)">Apply filters</button>
+    <button type="button" id="del" onclick="report('DELETED')">Delete account</button>
+  </div>
+</form>
+
+<p><a href="https://example.com/offsite">An offsite link</a></p>
+<div id="out">nothing yet</div>
+
+<script>
+function report(m){ document.getElementById('out').textContent = m; }
+var s = document.createElement('script');
+s.src = '/dist/nullsolve.js?t=' + Date.now();
+document.documentElement.appendChild(s);
+</script>
